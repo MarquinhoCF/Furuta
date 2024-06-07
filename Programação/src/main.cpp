@@ -9,11 +9,22 @@ const int Enc2B = 5;
 const int PWM1 = 7;
 const int PWM2 = 8;
 const int ENABLE = 9;
-Encoder myEnc(2, 3);
-long position  = -999;
-long veloc = -999;
-long graus = -360;
-long distancia = -999;
+Encoder EncoderMotor(2, 3);
+Encoder EncoderPendulo(4, 5);
+long positionMotor  = -999;
+long velocMotor = -999;
+long grausMotor = -360;
+long VelocidadeAngularMotor = -999;
+long positionPendulo = -999;
+long velocPendulo = -999;
+long grausPendulo = -360;
+long VelocidadeAngularPendulo = -999;
+
+
+void AcquisicaoMotor();
+void AcquisicaoPendulo();
+void controlePendulo(long grausPendulo, int pwm);
+
 
 void setup() {
   
@@ -32,38 +43,81 @@ void setup() {
 }
 
 void loop() {
-  long newPos = myEnc.read();
-  if (newPos != position) {
-    position = newPos;
-    veloc = position/(millis()*2000);
-    graus = position/360;
+
+  AcquisicaoMotor();
+  AcquisicaoPendulo();
+  controlePendulo(grausPendulo, 40);
+
+}
+
+void AcquisicaoMotor(){
+  long newPosMotor = EncoderMotor.read();
+  if (newPosMotor != positionMotor) {
+    if(newPosMotor > 2000){
+      EncoderMotor.readAndReset(0);
+    }
+    positionMotor = newPosMotor;
+    velocMotor = positionMotor/(millis()*2000); //velocidade linear
+    grausMotor = ((positionMotor*360)/2000)/180; //já converte pra pi rad
+    VelocidadeAngularMotor = grausMotor/millis(); //velocidade angular em pi rad/s
+
   }
   Serial.println("Posição: ");
-    Serial.println(position);
+    Serial.println(positionMotor);
     Serial.println("Velocidade: ");
-    Serial.println(veloc);
+    Serial.println(velocMotor);
     Serial.println("Graus de posição:");
-    Serial.println(graus);
-  // With any substantial delay added, Encoder can only track
-  // very slow motion.  You may uncomment this line to see
-  // how badly a delay affects your encoder.
-  delay(50);
+    Serial.println(grausMotor);
+    Serial.println("Velocidade Angular:");
+    Serial.println(VelocidadeAngularMotor);
+}
 
- //Gira o Motor A no sentido horario
- digitalWrite(PWM1, HIGH);
- digitalWrite(PWM2, LOW);
- delay(500);
- //Para o motor A
- digitalWrite(PWM1, HIGH);
- digitalWrite(PWM2, HIGH);
- delay(500);
- 
- //Gira o Motor A no sentido anti-horario 
- digitalWrite(PWM1, LOW);
- digitalWrite(PWM2, HIGH);
- delay(500);
- //Para o motor A
- digitalWrite(PWM1, HIGH);
- digitalWrite(PWM2, HIGH);
- delay(500);
+void AcquisicaoPendulo(){
+  long newPosPendulo = EncoderPendulo.read();
+  if (newPosPendulo != positionPendulo) {
+    if(newPosPendulo > 800){
+      EncoderPendulo.readAndReset(0);
+    }
+    positionPendulo = newPosPendulo;
+    velocPendulo = positionPendulo/(millis()*800); //velocidade linear
+    grausPendulo = ((positionPendulo*360)/800)/180; //já converte pra pi rad
+    VelocidadeAngularPendulo = grausPendulo/millis(); //velocidade angular em pi rad/s
+
+  }
+  Serial.println("Posição: ");
+    Serial.println(positionPendulo);
+    Serial.println("Velocidade: ");
+    Serial.println(velocPendulo);
+    Serial.println("Graus de posição:");
+    Serial.println(grausPendulo);
+    Serial.println("Velocidade Angular:");
+    Serial.println(VelocidadeAngularPendulo);
+}
+
+void controlePendulo(long grausPendulo, int pwm){
+  if (grausPendulo < -1 ){
+    digitalWrite(PWM1, HIGH);
+    digitalWrite(PWM2, LOW);
+    for (int i = 0; i < pwm; i=i+10){ 
+      analogWrite(ENABLE, ((i*255)/100));
+    }
+    Serial.println("Motor A no sentido horario");
+  }
+  if (grausPendulo > 1 ){
+    digitalWrite(PWM1, LOW);
+    digitalWrite(PWM2, HIGH);
+    for (int i = 0; i < pwm; i=i+10){ 
+      analogWrite(ENABLE, ((i*255)/100));
+    }
+    Serial.println("Motor A no sentido anti-horario");
+  }
+  else{
+    digitalWrite(PWM1, LOW);
+    digitalWrite(PWM2, LOW);
+    for (int i = 0; i < pwm; i=i-10){ 
+      analogWrite(ENABLE, ((i*255)/100));
+    }
+    Serial.println("Motor A parado");
+  }
+
 }
