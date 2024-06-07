@@ -54,7 +54,7 @@ void AcquisicaoMotor(){
   long newPosMotor = EncoderMotor.read();
   if (newPosMotor != positionMotor) {
     if(newPosMotor > 2000){
-      EncoderMotor.readAndReset(0);
+      EncoderMotor.readAndReset();
     }
     positionMotor = newPosMotor;
     velocMotor = positionMotor/(millis()*2000); //velocidade linear
@@ -76,7 +76,7 @@ void AcquisicaoPendulo(){
   long newPosPendulo = EncoderPendulo.read();
   if (newPosPendulo != positionPendulo) {
     if(newPosPendulo > 800){
-      EncoderPendulo.readAndReset(0);
+      EncoderPendulo.readAndReset();
     }
     positionPendulo = newPosPendulo;
     velocPendulo = positionPendulo/(millis()*800); //velocidade linear
