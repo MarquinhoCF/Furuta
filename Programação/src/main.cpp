@@ -1,7 +1,8 @@
-#include<Arduino.h>
-#include<Encoder.h>
-#include<L298NX2.h>
+#include <Arduino.h>
+#include <Encoder.h>
+#include <L298NX2.h>
 
+// Definição dos pinos
 const int Enc1A = 2;
 const int Enc1B = 3;
 const int Enc2A = 4;
@@ -9,114 +10,149 @@ const int Enc2B = 5;
 const int PWM1 = 7;
 const int PWM2 = 8;
 const int ENABLE = 9;
-Encoder EncoderMotor(2, 3);
-Encoder EncoderPendulo(4, 5);
-long positionMotor  = -999;
-long velocMotor = -999;
-long grausMotor = -360;
-long VelocidadeAngularMotor = -999;
-long positionPendulo = -999;
-long velocPendulo = -999;
-long grausPendulo = -360;
-long VelocidadeAngularPendulo = -999;
 
+// Inicialização dos encoders
+Encoder EncoderMotor(Enc1A, Enc1B);
+Encoder EncoderPendulo(Enc2A, Enc2B);
 
-void AcquisicaoMotor();
-void AcquisicaoPendulo();
-void controlePendulo(long grausPendulo, int pwm);
+// Variáveis globais para armazenar as posições
+long posicaoMotor = 0;
+long posicaoPendulo = 0;
+unsigned long ultimoTempoMotor = 0;
+unsigned long ultimoTempoPendulo = 0;
+float grausMotor = 0;
+float grausPendulo = 0;
+float posicaoAngularMotor = 0;
+float posicaoAngularPendulo = 0;
+float velocidadeAngularMotor = 0;
+float velocidadeAngularPendulo = 0;
 
+// Create a 4x1 matrix to store the K values
+float K[4][1] = {{0}, {0}, {0}, {0}};
+
+void acquisicaoMotor();
+void acquisicaoPendulo();
+int calcularPwm(float posicaoAngularMotor, float velocidadeAngularMotor, float posicaoPendulo, float velocidadeAngularPendulo, float K[4][1]);
+void controlePendulo(float posicaoAngularPendulo, int pwm);
 
 void setup() {
-  
-  Serial.begin(9600);
-  pinMode(Enc1A,INPUT);
-  pinMode(Enc1B,INPUT);
-  pinMode(Enc2A,INPUT);
-  pinMode(Enc2B,INPUT);
-  pinMode(PWM1,OUTPUT);
-  pinMode(PWM2,OUTPUT);
-  pinMode(ENABLE,OUTPUT);
-
+  Serial.begin(112500);
+  pinMode(Enc1A, INPUT);
+  pinMode(Enc1B, INPUT);
+  pinMode(Enc2A, INPUT);
+  pinMode(Enc2B, INPUT);
+  pinMode(PWM1, OUTPUT);
+  pinMode(PWM2, OUTPUT);
+  pinMode(ENABLE, OUTPUT);
 
   Serial.println("Monitor Ligado.");
-  // put your setup code here, to run once:
 }
 
 void loop() {
+  acquisicaoMotor();
 
-  AcquisicaoMotor();
-  AcquisicaoPendulo();
-  controlePendulo(grausPendulo, 40);
 
+  acquisicaoPendulo();
+ 
+  if(posicaoAngularPendulo!=0){
+    controlePendulo(posicaoAngularPendulo, calcularPwm(posicaoAngularMotor, velocidadeAngularMotor, posicaoAngularPendulo, velocidadeAngularPendulo, K));
+  }
 }
 
-void AcquisicaoMotor(){
-  long newPosMotor = EncoderMotor.read();
-  if (newPosMotor != positionMotor) {
-    if(newPosMotor > 2000){
+int calcularPwm(float posicaoAngularMotor, float velocidadeAngularMotor, float posicaoPendulo, float velocidadeAngularPendulo, float K[4][1]){
+  
+  int pwm = K[0][0]*posicaoAngularMotor + K[1][0]*velocidadeAngularMotor + K[2][0]*posicaoAngularPendulo + K[3][0]*velocidadeAngularPendulo;
+
+  return pwm;
+}
+
+void acquisicaoMotor() {
+  long novaPosMotor = EncoderMotor.read();
+  unsigned long tempoAtual = millis();
+
+  if (novaPosMotor != posicaoMotor) {
+    if ((novaPosMotor >= 2000) || (novaPosMotor <= -2000)) {
       EncoderMotor.readAndReset();
+      novaPosMotor = 0;
     }
-    positionMotor = newPosMotor;
-    velocMotor = positionMotor/(millis()*2000); //velocidade linear
-    grausMotor = ((positionMotor*360)/2000)/180; //já converte pra pi rad
-    VelocidadeAngularMotor = grausMotor/millis(); //velocidade angular em pi rad/s
+    long deltaPos = novaPosMotor - posicaoMotor;
+    unsigned long deltaTime = tempoAtual - ultimoTempoMotor;
 
+    posicaoMotor = novaPosMotor;
+    ultimoTempoMotor = tempoAtual;
+
+    // Cálculo de velocidade linear e angular
+    grausMotor = (posicaoMotor * 360.0) / 2000.0; // Posição em graus
+    posicaoAngularMotor = grausMotor * PI / 180.0; // Posição em radianos
+    velocidadeAngularMotor = (deltaPos * 360.0 / 2000.0) * (PI / 180.0) / (deltaTime / 1000.0); // Velocidade angular em rad/s
+
+    Serial.println("Posição do Motor (Counts): ");
+    Serial.print(posicaoMotor);
+    Serial.println("Posição do Motor (rad): ");
+    Serial.print(posicaoAngularMotor);
+    Serial.println("Velocidade Angular Motor (rad/s): ");
+    Serial.print(velocidadeAngularMotor);
+  
   }
-  Serial.println("Posição: ");
-    Serial.println(positionMotor);
-    Serial.println("Velocidade: ");
-    Serial.println(velocMotor);
-    Serial.println("Graus de posição:");
-    Serial.println(grausMotor);
-    Serial.println("Velocidade Angular:");
-    Serial.println(VelocidadeAngularMotor);
 }
 
-void AcquisicaoPendulo(){
-  long newPosPendulo = EncoderPendulo.read();
-  if (newPosPendulo != positionPendulo) {
-    if(newPosPendulo > 800){
+void acquisicaoPendulo() {
+  long novaPosPendulo = EncoderPendulo.read();
+  unsigned long tempoAtual = millis();
+
+  if (novaPosPendulo != posicaoPendulo) {
+    if ((novaPosPendulo >= 600) || (novaPosPendulo <= -600)) {
       EncoderPendulo.readAndReset();
+      novaPosPendulo = 0;
     }
-    positionPendulo = newPosPendulo;
-    velocPendulo = positionPendulo/(millis()*800); //velocidade linear
-    grausPendulo = ((positionPendulo*360)/800)/180; //já converte pra pi rad
-    VelocidadeAngularPendulo = grausPendulo/millis(); //velocidade angular em pi rad/s
 
+
+    long deltaPos = novaPosPendulo - posicaoPendulo;
+    unsigned long deltaTime = tempoAtual - ultimoTempoPendulo;
+
+    posicaoPendulo = novaPosPendulo;
+    ultimoTempoPendulo = tempoAtual;
+
+    // Cálculo de velocidade linear e angular
+    grausPendulo = (posicaoPendulo * 360.0) / 600.0; // Posição em graus
+    posicaoAngularPendulo = grausPendulo * PI / 180.0; // Posição em radianos
+    velocidadeAngularPendulo = (deltaPos * 360.0 / 600.0) * (PI / 180.0) / (deltaTime / 1000.0); // Velocidade angular em rad/s
+
+    Serial.println("Posição Pêndulo (Counts): ");
+    Serial.print(posicaoPendulo);
+    Serial.println("Posição Pêndulo (rad): ");
+    Serial.print(posicaoAngularPendulo);
+    Serial.println("Velocidade Angular Pêndulo (rad/s): ");
+    Serial.print(velocidadeAngularPendulo);
   }
-  Serial.println("Posição: ");
-    Serial.println(positionPendulo);
-    Serial.println("Velocidade: ");
-    Serial.println(velocPendulo);
-    Serial.println("Graus de posição:");
-    Serial.println(grausPendulo);
-    Serial.println("Velocidade Angular:");
-    Serial.println(VelocidadeAngularPendulo);
 }
 
-void controlePendulo(long grausPendulo, int pwm){
-  if (grausPendulo < -1 ){
+void controlePendulo(float posicaoAngularPendulo, int pwm) {
+  int pwmValue = map(pwm, 0, 100, 0, 255);
+
+  if (posicaoAngularPendulo < -1) {
     digitalWrite(PWM1, HIGH);
     digitalWrite(PWM2, LOW);
-    for (int i = 0; i < pwm; i=i+10){ 
-      analogWrite(ENABLE, ((i*255)/100));
+    for (int i = 0; i <= pwmValue; i += 10) {
+      analogWrite(ENABLE, i);
+      delay(10); // Pequena pausa para criar a rampa de aceleração
     }
-    Serial.println("Motor A no sentido horario");
-  }
-  if (grausPendulo > 1 ){
+    Serial.println("Motor A no sentido horário");
+  } else if (posicaoAngularPendulo > 1) {
     digitalWrite(PWM1, LOW);
     digitalWrite(PWM2, HIGH);
-    for (int i = 0; i < pwm; i=i+10){ 
-      analogWrite(ENABLE, ((i*255)/100));
+    for (int i = 0; i <= pwmValue; i += 10) {
+      analogWrite(ENABLE, i);
+      delay(10); // Pequena pausa para criar a rampa de aceleração
     }
-    Serial.println("Motor A no sentido anti-horario");
-  }
-  else{
+    Serial.println("Motor A no sentido anti-horário");
+  } else {
+    for (int i = pwmValue; i >= 0; i -= 10) {
+      analogWrite(ENABLE, i);
+      delay(10); // Pequena pausa para criar a rampa de desaceleração
+    }
     digitalWrite(PWM1, LOW);
     digitalWrite(PWM2, LOW);
-    for (int i = 0; i < pwm; i=i-10){ 
-      analogWrite(ENABLE, ((i*255)/100));
-    }
     Serial.println("Motor A parado");
   }
 }
