@@ -50,12 +50,21 @@ void setup() {
 
 void loop() {
   acquisicaoMotor();
-
-
   acquisicaoPendulo();
- 
-  if(posicaoAngularPendulo!=0){
-    controlePendulo(posicaoAngularPendulo, calcularPwm(posicaoAngularMotor, velocidadeAngularMotor, posicaoAngularPendulo, velocidadeAngularPendulo, K));
+  if(posicaoAngularPendulo != 0){
+    while(posicaoAngularPendulo!=0){
+      acquisicaoMotor();
+      acquisicaoPendulo();
+      controlePendulo(posicaoAngularPendulo, calcularPwm(posicaoAngularMotor, velocidadeAngularMotor, posicaoAngularPendulo, velocidadeAngularPendulo, K));
+    }
+  }
+  if(posicaoAngularPendulo == 0){
+    posicaoAngularMotor = 0;
+    velocidadeAngularMotor = 0;
+    posicaoAngularPendulo = 0;
+    velocidadeAngularPendulo = 0;
+    grausMotor = 0;
+    grausPendulo = 0;
   }
 }
 
