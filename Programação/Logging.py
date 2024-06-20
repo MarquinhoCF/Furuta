@@ -2,27 +2,19 @@ from matplotlib import animation
 import serial
 import csv
 import tkinter as tk
-import serial
-import csv
 import re
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg 
 from matplotlib.figure import Figure
 import threading 
-import serial
-import csv
-import re
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg 
-from matplotlib.figure import Figure
-import threading 
-import matplotlib.pyplot as plt
 import time
+import matplotlib.pyplot as plt
 # Open the serial port
 while True:
     try:
-        ser = serial.Serial('COM3', 9600)
+        ser = serial.Serial('COM4', 112500)
         break
     except serial.SerialException:
-        print("Waiting for COM3 connection...")
+        print("Waiting for COM4 connection...")
         time.sleep(1)
 
 # Create lists to store the data
@@ -35,41 +27,43 @@ pendulum_counts = []
 pendulum_positions = []
 pendulum_degrees = []
 angular_velocities_pendulum = []
+start = False
 
-show_motor_positions = True;
-show_motor_counts = True;
-show_motor_angular_velocities = True;
-show_motor_degrees = True;
-show_pendulum_counts = True;
-show_pendulum_positions = True;
-show_pendulum_degrees = True;
-show_pendulum_angular_velocities = True;
+show_motor_positions = True
+show_motor_counts = True
+show_motor_angular_velocities = True
+show_motor_degrees = True
+show_pendulum_counts = True
+show_pendulum_positions = True
+show_pendulum_degrees = True
+show_pendulum_angular_velocities = True
 
 
 # Read data from the serial port
 def read_and_process_data():
-    # Read a line of data
-    try:
-        line = ser.readline().decode('utf-8', errors="strict").strip()
-        # Split the line into values
-        values = line.split(', ')
-    except:
-        ser.reset_input_buffer()
-        values = [timestamps[-1], motor_counts[-1], motor_degrees[-1], motor_positions[-1], angular_velocities_motor[-1], pendulum_counts[-1], pendulum_degrees[-1], pendulum_counts[-1], angular_velocities_pendulum[-1]]
+    if (start):
+        # Read a line of data
+        try:
+            line = ser.readline().decode('utf-8', errors="strict").strip()
+            # Split the line into values
+            values = line.split(', ')
+        except:
+            ser.reset_input_buffer()
+            values = [timestamps[-1], motor_counts[-1], motor_degrees[-1], motor_positions[-1], angular_velocities_motor[-1], pendulum_counts[-1], pendulum_degrees[-1], pendulum_counts[-1], angular_velocities_pendulum[-1]]
 
         
-    timestamps.append(float(values[0]))
-    motor_counts.append(float(values[1]))
-    motor_degrees.append(float(values[2]))
-    motor_positions.append(float(values[3]))
-    angular_velocities_motor.append(float(values[4]))
-    pendulum_counts.append(float(values[5]))
-    pendulum_degrees.append(float(values[6]))
-    pendulum_positions.append(float(values[7]))
-    angular_velocities_pendulum.append(float(values[8]))
+        timestamps.append(float(values[0]))
+        motor_counts.append(float(values[1]))
+        motor_degrees.append(float(values[2]))
+        motor_positions.append(float(values[3]))
+        angular_velocities_motor.append(float(values[4]))
+        pendulum_counts.append(float(values[5]))
+        pendulum_degrees.append(float(values[6]))
+        pendulum_positions.append(float(values[7]))
+        angular_velocities_pendulum.append(float(values[8]))
 
 
-    print(f"Timestamp: {timestamps[-1]}, Pulsos do Motor: {motor_counts[-1]}, Posição em graus do Motor: {motor_degrees[-1]}, Posição em rad do Motor: {motor_positions[-1]}, Velocidade Angular do Motor: {angular_velocities_motor[-1]}, Pulsos do Pêndulo: {pendulum_counts[-1]}, Posição em graus do Pêndulo: {pendulum_degrees[-1]}, Posição emm rad do Pêndulo: {pendulum_positions[-1]}, Velocidade Angular do Pêndulo: {angular_velocities_pendulum[-1]}")
+        print(f"Timestamp: {timestamps[-1]}, Pulsos do Motor: {motor_counts[-1]}, Posição em graus do Motor: {motor_degrees[-1]}, Posição em rad do Motor: {motor_positions[-1]}, Velocidade Angular do Motor: {angular_velocities_motor[-1]}, Pulsos do Pêndulo: {pendulum_counts[-1]}, Posição em graus do Pêndulo: {pendulum_degrees[-1]}, Posição emm rad do Pêndulo: {pendulum_positions[-1]}, Velocidade Angular do Pêndulo: {angular_velocities_pendulum[-1]}")
 
 
 def update_plot(frame):
@@ -163,11 +157,30 @@ def toggle_show_pendulum_angular_velocities():
     global show_pendulum_angular_velocities
     show_pendulum_angular_velocities = not show_pendulum_angular_velocities
 
+
+# Function to send the start command on serial
+def send_start_command():
+    ser.write(b'Start\n')
+    global start
+    start = True
+
+# Function to send the stop command on serial
+def send_stop_command():
+    ser.write(b'Stop\n')
+    global start
+    start = False
+    reset_data()
+    ser.reset_input_buffer()
+
+# Function to send the reset command on serial
+def reset():
+    ser.write(b'Reset\n')
+
 # Function to reset the data
 def reset_data():
     ser.reset_input_buffer()
     # Send reset command on the serial
-    ser.write(b'Reset\n')
+    reset()
     # Clear the plot
     plt.cla()
     
@@ -222,6 +235,16 @@ close_button.pack(side=tk.BOTTOM)
 # Create the write button
 write_button = tk.Button(root, text="Write CSV", command=write_data_as_csv)
 write_button.pack(side=tk.BOTTOM)
+# Create the start button
+start_button = tk.Button(root, text="Start", command=send_start_command)
+start_button.pack(side=tk.BOTTOM)
+# Create the stop button
+stop_button = tk.Button(root, text="Stop", command=send_stop_command)
+stop_button.pack(side=tk.BOTTOM)
+
+#Create the reset button
+reset_button = tk.Button(root, text="Reset_data", command=reset_data)
+reset_button.pack(side=tk.BOTTOM)
 
 
 # Create the plot
