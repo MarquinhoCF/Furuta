@@ -50,29 +50,41 @@ def read_and_process_data():
         except:
             ser.reset_input_buffer()
             values = [timestamps[-1], motor_counts[-1], motor_degrees[-1], motor_positions[-1], angular_velocities_motor[-1], pendulum_counts[-1], pendulum_degrees[-1], pendulum_counts[-1], angular_velocities_pendulum[-1]]
-
         
-        timestamps.append(float(values[0]))
-        motor_counts.append(float(values[1]))
-        motor_degrees.append(float(values[2]))
-        motor_positions.append(float(values[3]))
-        angular_velocities_motor.append(float(values[4]))
-        pendulum_counts.append(float(values[5]))
-        pendulum_degrees.append(float(values[6]))
-        pendulum_positions.append(float(values[7]))
-        angular_velocities_pendulum.append(float(values[8]))
+        try:
+            timestamps.append(float(values[0]))
+            motor_counts.append(float(values[1]))
+            motor_degrees.append(float(values[2]))
+            motor_positions.append(float(values[3]))
+            angular_velocities_motor.append(float(values[4]))
+            pendulum_counts.append(float(values[5]))
+            pendulum_degrees.append(float(values[6]))
+            pendulum_positions.append(float(values[7]))
+            angular_velocities_pendulum.append(float(values[8]))
+        except:
+            if(timestamps[-1] and motor_counts[-1] and motor_degrees[-1] and motor_positions[-1] and angular_velocities_motor[-1] and pendulum_counts[-1] and pendulum_degrees[-1] and pendulum_positions[-1] and angular_velocities_pendulum[-1]):
+                timestamps.append(timestamps[-1])
+                motor_counts.append(motor_counts[-1])
+                motor_degrees.append(motor_degrees[-1])
+                motor_positions.append(motor_positions[-1])
+                angular_velocities_motor.append(angular_velocities_motor[-1])
+                pendulum_counts.append(pendulum_counts[-1])
+                pendulum_degrees.append(pendulum_degrees[-1])
+                pendulum_positions.append(pendulum_positions[-1])
+                angular_velocities_pendulum.append(angular_velocities_pendulum[-1])
+        
+        if(timestamps[-1] and motor_counts[-1] and motor_degrees[-1] and motor_positions[-1] and angular_velocities_motor[-1] and pendulum_counts[-1] and pendulum_degrees[-1] and pendulum_positions[-1] and angular_velocities_pendulum[-1]):
+            print(f"Timestamp: {timestamps[-1]}, Pulsos do Motor: {motor_counts[-1]}, Posição em graus do Motor: {motor_degrees[-1]}, Posição em rad do Motor: {motor_positions[-1]}, Velocidade Angular do Motor: {angular_velocities_motor[-1]}, Pulsos do Pêndulo: {pendulum_counts[-1]}, Posição em graus do Pêndulo: {pendulum_degrees[-1]}, Posição emm rad do Pêndulo: {pendulum_positions[-1]}, Velocidade Angular do Pêndulo: {angular_velocities_pendulum[-1]}")
 
-
-        print(f"Timestamp: {timestamps[-1]}, Pulsos do Motor: {motor_counts[-1]}, Posição em graus do Motor: {motor_degrees[-1]}, Posição em rad do Motor: {motor_positions[-1]}, Velocidade Angular do Motor: {angular_velocities_motor[-1]}, Pulsos do Pêndulo: {pendulum_counts[-1]}, Posição em graus do Pêndulo: {pendulum_degrees[-1]}, Posição emm rad do Pêndulo: {pendulum_positions[-1]}, Velocidade Angular do Pêndulo: {angular_velocities_pendulum[-1]}")
 
 
 def update_plot(frame):
     read_and_process_data()
     plt.cla()
-    if show_motor_counts:
-        plt.plot(timestamps, motor_counts, label='Pulsos Encoder Motor')
+    if timestamps:
+        plt.xlim(min(timestamps), max(timestamps))
     else:
-        plt.plot([], [], label='Pulsos Encoder do Motor')  # Empty plot to hide the line
+        plt.xlim(1, 1)
 
     if show_motor_positions:
         plt.plot(timestamps, motor_positions, label='Posição Angular do Motor [rad]')
@@ -169,8 +181,9 @@ def send_stop_command():
     ser.write(b'Stop\n')
     global start
     start = False
-    reset_data()
     ser.reset_input_buffer()
+    reset_data()
+    
 
 # Function to send the reset command on serial
 def reset():
