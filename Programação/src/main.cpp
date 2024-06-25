@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <Encoder.h>
 
-// Definição dos pinos
+// Definition of pins
 const int Enc1A = 2;
 const int Enc1B = 3;
 const int Enc2A = 20;
@@ -10,60 +10,87 @@ const int PWM1 = 9;
 const int PWM2 = 10;
 const int ENABLE = 11;
 
-// Inicialização dos encoders
+// Initialization of encoders
 Encoder EncoderMotor(Enc1A, Enc1B);
 Encoder EncoderPendulo(Enc2A, Enc2B);
 
-// Variáveis globais para armazenar as posições
+// Global variables to store positions
 long countMotor = 0;
 long countPendulo = 0;
-float velocidadeAngularMotor = 0;
-float velocidadeAngularPendulo = 0;
-//valor final de cada variável
-float posicaoMotor = 0;
-float posicaoPendulo = 4;
-unsigned long ultimoTempoMotor = 0;
-unsigned long ultimoTempoPendulo = 0;
-float grausMotor = 0;
-float grausPendulo = 0;
+double velocidadeAngularMotor = 0;
+double velocidadeAngularPendulo = 0;
+double posicaoMotor = 0;
+double posicaoPendulo = 0;
+double ultimoTempoMotor = 0;
+double ultimoTempoPendulo = 0;
+double grausMotor = 0;
+double grausPendulo = 0;
 const int histMax = 6;
 
-// Vetores para armazenar os valores de pulsos
-float CountsMotor[histMax] = {0,0,0,0,0};
-float CountsPendulo[histMax] = {1200,1200,1200,1200,1200};
+// Arrays to store pulse values
+double CountsMotor[histMax] = {0,0,0,0,0};
+double CountsPendulo[histMax] = {0,0,0,0,0};
 
-// Vetores para armazenar os valores de posição e velocidade
-float PosicoesAngularMotor[histMax] = {0,0,0,0,0};
-float velocidadesAngularMotor[histMax] = {0,0,0,0,0};
-float PosicoesAngularPendulo[histMax] = {1200,1200,1200,1200,1200};
-float velocidadesAngularPendulo[histMax] = {0,0,0,0,0};
+// Arrays to store position and velocity values
+double PosicoesAngularMotor[histMax] = {0,0,0,0,0};
+double velocidadesAngularMotor[histMax] = {0,0,0,0,0};
+double PosicoesAngularPendulo[histMax] = {0,0,0,0,0};
+double velocidadesAngularPendulo[histMax] = {0,0,0,0,0};
+double ErroRadPendulo = 0;
+double ErroGrausMotor = 0;
+double ErroRadMotor = 0;
+double ErroGrausPendulo = 0;
 
-float countsMotorAcumulados = 0;
-float countsPenduloAcumulados = 6000;
-float PosicoesPenduloAcumuladas = 0;
-float velocidadeAngularPenduloAcumulada = 0;
-float PosicoesMotorAcumuladas = 0;
-float velocidadeAngularMotorAcumulada = 0;
-int dir = 0;
-int stepsdone = 0;
-int passo = 0;
+double countsMotorAcumulados = 0;
+double countsPenduloAcumulados = 0;
+double PosicoesPenduloAcumuladas = 0;
+double velocidadeAngularPenduloAcumulada = 0;
+double PosicoesMotorAcumuladas = 0;
+double velocidadeAngularMotorAcumulada = 0;
+double grausPenduloAnt = 0;
+double grausMotorAnt = 0;
 
+double setPoint_SwingUp_GrausPendulo = 180.00;
+double setPoint_Equilibrio_GrausPendulo = 180.00;
+double setPointRad_Motor = 0;
+double setPointRad_Pendulo = 1;
+double setPointGraus_Motor = 0;
 double tempo = 0.0;
 double tempoInicial = 0.0;
 double tempoAnterior = 0.0;
+bool stop = 0;
+bool mode = 0;
+int dir = 0;
+
+double deltaErroGrausPendulo = 0;
+double ErroAntGrausPendulo = 0;
+
+double ErroLimiteEsquerdo = 0.00;
+double LimiteEsquerdo = 90.00;
+double ErroLimiteDireito = 0.00;
+double LimiteDireito = -90.00;
+
+double deltaErroGrausMotor = 0;
+double ErroAntGraus = 0;
+
 
 // Create a 4x1 matrix to store the K values
-float K[4][1] = {{-0.1}, {-0.1279}, {-15.6637}, {-20.101}}; //{-1.60}, {-0.0443}, {2.563}, {-2.264} antigos
+double K[4][1] ={{-1},{-1.279},{-30},{-40}}; // New values{{-0.1}, {-0.1279}, {-15.6637}, {-20.101}}; // Old values
 
-
+// Function declarations
+void resetEquilibrio();
+void Equilibrar();
+void SwingUp(); 
 void acquisicaoMotor();
 void acquisicaoPendulo();
-int calcularPwm(float posicaoAngularMotor, float velocidadeAngularMotor, float posicaoPendulo, float velocidadeAngularPendulo, float K[4][1]);
-void controlePendulo(int dir, int pwm);
-void DoStep(int posicaoPendulo, int dir, int pwm);
+int calcularPwm(double posicaoAngularMotor, double velocidadeAngularMotor, double posicaoPendulo, double velocidadeAngularPendulo, double K[4][1]);
+void controlePendulo(double pwm, int mode);
+void DoStep(int posicaoPendulo, int dir, double pwm);
+void motorParado();
+void resetSwingUp();
 
 void setup() {
-  Serial.begin(112500);
+  Serial.begin(9600);
   pinMode(Enc1A, INPUT_PULLUP);
   pinMode(Enc1B, INPUT_PULLUP);
   pinMode(Enc2A, INPUT_PULLUP);
@@ -71,115 +98,239 @@ void setup() {
   pinMode(PWM1, OUTPUT);
   pinMode(PWM2, OUTPUT);
   pinMode(ENABLE, OUTPUT);
-  EncoderPendulo.write(1200);
-  //Serial.println("Monitor Ligado.");
+  //attachInterrupt(digitalPinToInterrupt(Enc1A), acquisicaoMotor, CHANGE);
+  //attachInterrupt(digitalPinToInterrupt(Enc2A), acquisicaoPendulo, CHANGE);
 }
 
 void loop() {
+  Serial.println("tá no loop");
   if (Serial.available() > 0) {
     String command = Serial.readStringUntil('\n');
-    if (command == "Reset") {
-      // Reset all list variables and accumulators
-      for (int i = 0; i < histMax; i++) {
-        CountsMotor[i] = 0;
-        CountsPendulo[i] = 1200;
-        PosicoesAngularMotor[i] = 0;
-        velocidadesAngularMotor[i] = 0;
-        PosicoesAngularPendulo[i] = 1200;
-        velocidadesAngularPendulo[i] = 0;
-      }
-      countsMotorAcumulados = 0;
-      countsPenduloAcumulados = 6000;
-      PosicoesPenduloAcumuladas = 0;
-      velocidadeAngularPenduloAcumulada = 0;
-      PosicoesMotorAcumuladas = 0;
-      velocidadeAngularMotorAcumulada = 0;
+    if (command == "Equilibrar") {
+      Serial.println("Equilibrar");
+      Equilibrar();
+      Serial.println("Saiu Equilibrar");
     }
-    if (command == "Start") {
-      delay(200);
-      while (true) {
-        tempoInicial = micros() / 1000000.0;
-        acquisicaoMotor();
-        acquisicaoPendulo();
-        int pwm = calcularPwm(posicaoMotor, velocidadeAngularMotor, posicaoPendulo, velocidadeAngularPendulo, K);
-        controlePendulo(dir, pwm);
-        DoStep(posicaoPendulo, dir, pwm);
-        tempo = tempoInicial - tempoAnterior;
-        tempoAnterior = tempoInicial;
-        Serial.print(tempo);
-        Serial.print(", ");
-        Serial.print(countMotor);
-        Serial.print(", ");
-        Serial.print(grausMotor);
-        Serial.print(", ");
-        Serial.print(posicaoMotor);
-        Serial.print(", ");
-        Serial.print(velocidadeAngularMotor);
-        Serial.print(", ");
-        Serial.print(countPendulo);
-        Serial.print(", ");
-        Serial.print(grausPendulo);
-        Serial.print(", ");
-        Serial.print(posicaoPendulo);
-        Serial.print(", ");
-        Serial.println(velocidadeAngularPendulo);
+    if (command == "SwingUp") {
+      Serial.println("SwingUp");
+      SwingUp();
+      Serial.println("Saiu SwingUp");
+    }
+  }
+}
 
-        if (Serial.available() > 0) {
-          String command = Serial.readStringUntil('\n');
-          if (command == "Stop") {
-            break;
+void Equilibrar(){
+  mode = 0;
+  Serial.println("passou aq");
+  while (true) {
+    if(Serial.available() > 0){
+      String command = Serial.readStringUntil('\n');
+      if (command == "Reset") {
+        resetSwingUp(); 
+      }
+      if (command == "Start") {
+        stop = 0;
+        Serial.println("Start");
+        EncoderMotor.readAndReset();
+        EncoderPendulo.readAndReset();
+        resetSwingUp();
+        EncoderPendulo.write(0);
+        while(stop == 0){
+          Serial.println("Tá aq dentro");
+          acquisicaoPendulo();
+          acquisicaoMotor();
+          while (ErroGrausPendulo != 0 && ErroGrausMotor != 0) {
+            tempoInicial = micros() / 1000000.0;
+            acquisicaoPendulo();
+            acquisicaoMotor();
+            double pwm = calcularPwm(posicaoMotor, velocidadeAngularMotor, posicaoPendulo, velocidadeAngularPendulo, K);
+            controlePendulo(pwm, mode);
+            tempo = tempoInicial - tempoAnterior;
+            // Serial.print(tempo);
+            // Serial.print(", ");
+            Serial.print(countMotor);
+            Serial.print(", ");
+            Serial.print(grausMotor);
+            Serial.print(", ");
+            Serial.print(posicaoMotor);
+            Serial.print(", ");
+            Serial.print(velocidadeAngularMotor);
+            Serial.print(", ");
+            Serial.print(countPendulo);
+            Serial.print(", ");
+            Serial.print(grausPendulo);
+            Serial.print(", ");
+            Serial.print(posicaoPendulo);
+            Serial.print(", ");
+            Serial.print(velocidadeAngularPendulo);
+            Serial.print(", ");
+            Serial.print(pwm);
+            Serial.print(", ");
+            Serial.print(mode);
+            Serial.print(", ");
+            Serial.println(dir);
+
+            if (Serial.available() > 0) {
+              String command = Serial.readStringUntil('\n');
+              if (command == "Stop") {
+                digitalWrite(PWM1, LOW);
+                digitalWrite(PWM2, LOW);
+                analogWrite(ENABLE, 0);
+                break;
+                stop = 1;
+              }
+            }
+          }
+          if(ErroGrausPendulo == 0){
+            digitalWrite(PWM1, LOW);
+            digitalWrite(PWM2, LOW);
+            analogWrite(ENABLE, 0);
+          }
+          if (Serial.available() > 0) {
+            String command = Serial.readStringUntil('\n');
+            if (command == "Stop") {
+              break;
+            }
           }
         }
       }
+      if (command == "Stop") {
+        break;
+      }
     }
-    digitalWrite(PWM1, LOW);
-    digitalWrite(PWM2, LOW);
-    analogWrite(ENABLE, 0);
-  } 
-}
-
-void DoStep(int posicaoPendulo, int dir, int pwm ){
-  if(posicaoPendulo > 4){
-    passo = map(posicaoPendulo, -2, 2, 0, 10);
-    dir = 1;
-  }
-  else if(posicaoPendulo < 4){
-    passo = map(posicaoPendulo, -2, 2, 0, 10);
-    dir = -1;
-  }
-  pwm = map(pwm, -100, 100, 0, 255);
-  if ((stepsdone <= passo && grausMotor < 100)){
-    digitalWrite(PWM1, HIGH);
-    digitalWrite(PWM2, LOW);
-    analogWrite(ENABLE, pwm);
-    //Serial.println("Motor A no sentido horário");
-    stepsdone++;
-  }
-  else if ((stepsdone <= passo && grausMotor > -100)){
-    digitalWrite(PWM1, LOW);
-    digitalWrite(PWM2, HIGH);
-    analogWrite(ENABLE, pwm);
-    //Serial.println("Motor A no sentido anti-horário");
-    stepsdone++;
-  }
-  else{
-    digitalWrite(PWM1, LOW);
-    digitalWrite(PWM2, LOW);
-    analogWrite(ENABLE, 0);
-    //Serial.println("Motor A parado");
   }
 }
 
-int calcularPwm(float posicaoAngularMotor, float velocidadeAngularMotor, float posicaoAngularPendulo, float velocidadeAngularPendulo, float K[4][1]){
+
+void SwingUp(){
+  mode = 1;
+  Serial.println("passou aq");
+  while (true) {
+    if(Serial.available() > 0){
+      String command = Serial.readStringUntil('\n');
+      if (command == "Reset") {
+        resetEquilibrio(); 
+      }
+      if (command == "Start") {
+        stop = 0;
+        Serial.println("Start");
+        EncoderMotor.readAndReset();
+        EncoderPendulo.readAndReset();
+        resetEquilibrio();
+        EncoderPendulo.write(1400);
+        while(stop == 0){
+          Serial.println("Tá aq dentro");
+          acquisicaoPendulo();
+          acquisicaoMotor();
+          while (ErroGrausPendulo != 0  && ErroGrausMotor != 0) {
+            tempoInicial = micros() / 1000000.0;
+            acquisicaoPendulo();
+            acquisicaoMotor();
+            double pwm = calcularPwm(posicaoMotor, velocidadeAngularMotor, posicaoPendulo, velocidadeAngularPendulo, K);
+            controlePendulo(pwm, mode);
+            tempo = tempoInicial - tempoAnterior;
+            Serial.print(tempo);
+            Serial.print(", ");
+            Serial.print(countMotor);
+            Serial.print(", ");
+            Serial.print(grausMotor);
+            Serial.print(", ");
+            Serial.print(posicaoMotor);
+            Serial.print(", ");
+            Serial.print(velocidadeAngularMotor);
+            Serial.print(", ");
+            Serial.print(countPendulo);
+            Serial.print(", ");
+            Serial.print(grausPendulo);
+            Serial.print(", ");
+            Serial.print(posicaoPendulo);
+            Serial.print(", ");
+            Serial.print(velocidadeAngularPendulo);
+            Serial.print(", ");
+
+            if (Serial.available() > 0) {
+              String command = Serial.readStringUntil('\n');
+              if (command == "Stop") {
+                digitalWrite(PWM1, LOW);
+                digitalWrite(PWM2, LOW);
+                analogWrite(ENABLE, 0);
+                stop = 1;
+                break;
+              }
+            }
+          }
+          if(ErroGrausPendulo == 0){
+            digitalWrite(PWM1, LOW);
+            digitalWrite(PWM2, LOW);
+            analogWrite(ENABLE, 0);
+          }
+          if (Serial.available() > 0) {
+              String command = Serial.readStringUntil('\n');
+              if (command == "Stop") {
+                break;
+              }
+          }
+        }
+      }
+      if (command == "Stop") {
+        break;
+      }
+    }
+  }
+}
+
+void resetEquilibrio(){
+  // Reset all list variables and accumulators
+  for (int i = 0; i < histMax; i++) {
+    CountsMotor[i] = 0;
+    CountsPendulo[i] = 1400;
+    PosicoesAngularMotor[i] = 0;
+    velocidadesAngularMotor[i] = 0;
+    PosicoesAngularPendulo[i] = 1;
+    velocidadesAngularPendulo[i] = 0;
+  }
+  countsMotorAcumulados = 0;
+  countsPenduloAcumulados = 7000;
+  PosicoesPenduloAcumuladas = 5;
+  velocidadeAngularPenduloAcumulada = 0;
+  PosicoesMotorAcumuladas = 0;
+  velocidadeAngularMotorAcumulada = 0;
+  EncoderMotor.readAndReset();
+  EncoderPendulo.readAndReset();
+  EncoderPendulo.write(1400);
+}
+
+void resetSwingUp(){
+  // Reset all list variables and accumulators
+  for (int i = 0; i < histMax; i++) {
+    CountsMotor[i] = 0;
+    CountsPendulo[i] = 0;
+    PosicoesAngularMotor[i] = 0;
+    velocidadesAngularMotor[i] = 0;
+    PosicoesAngularPendulo[i] = 0;
+    velocidadesAngularPendulo[i] = 0;
+  }
+  countsMotorAcumulados = 0;
+  countsPenduloAcumulados = 0;
+  PosicoesPenduloAcumuladas = 0;
+  velocidadeAngularPenduloAcumulada = 0;
+  PosicoesMotorAcumuladas = 0;
+  velocidadeAngularMotorAcumulada = 0;
+  EncoderMotor.readAndReset();
+  EncoderPendulo.readAndReset();
+  EncoderPendulo.write(0);
+}
+
+int calcularPwm(double posicaoAngularMotor, double velocidadeAngularMotor, double posicaoAngularPendulo, double velocidadeAngularPendulo, double K[4][1]){
   
-  int pwm = K[0][0]*posicaoAngularMotor + K[1][0]*velocidadeAngularMotor + K[2][0]*posicaoAngularPendulo + K[3][0]*velocidadeAngularPendulo;
+  double pwm = K[0][0]*ErroRadMotor + K[1][0]*velocidadeAngularMotor + K[2][0]*ErroRadPendulo + K[3][0]*velocidadeAngularPendulo;
 
   return pwm;
 }
 
 void acquisicaoMotor() {
   long newCountsMotor = EncoderMotor.read();
-  unsigned long tempoAtual = millis();
+  double tempoAtual = millis();
   
   countsMotorAcumulados -= CountsMotor[0];
   PosicoesMotorAcumuladas = PosicoesAngularMotor[0];
@@ -194,38 +345,39 @@ void acquisicaoMotor() {
   countsMotorAcumulados += CountsMotor[histMax - 1];
 
   countMotor = countsMotorAcumulados / (histMax-1);
+
   long deltaPos = newCountsMotor - CountsMotor[histMax - 2];
+
   unsigned long deltaTime = tempoAtual - ultimoTempoMotor;
 
   ultimoTempoMotor = tempoAtual;
 
-  // Cálculo de velocidade linear e angular
-  grausMotor = (countMotor * 360.0) / 2000.0; // Posição em graus
-  int posicaoAngularMotor = grausMotor * PI / 180.0; // Posição em radianos
+  grausMotor = (countMotor * 360.0) / 2400.0; // Position in degrees
+  double posicaoAngularMotor = grausMotor * PI / 180.0; // Position in radians
 
   PosicoesAngularMotor[histMax - 1] = posicaoAngularMotor;
   PosicoesMotorAcumuladas += PosicoesAngularMotor[histMax - 1];
 
   posicaoMotor = PosicoesMotorAcumuladas / (histMax-1);
 
+  double deltaGrausMotor = grausMotor - grausMotorAnt;
+  grausMotorAnt = grausMotor;
 
-  int velocidadeAngular = (deltaPos * 360.0 / 2000.0) * (PI / 180.0) / (deltaTime / 1000.0); // Velocidade angular em rad/s
+  int velocidadeAngular = (deltaGrausMotor) * ( PI / 180.0) / (deltaTime / 1000.0); // Angular velocity in rad/s
   velocidadesAngularMotor[histMax - 1] = velocidadeAngular;
   velocidadeAngularMotorAcumulada += velocidadesAngularMotor[histMax - 1];
   velocidadeAngularMotor = velocidadeAngularMotorAcumulada / (histMax-1);
 
+  ErroRadMotor = setPointRad_Motor - posicaoMotor;
+  ErroGrausMotor = setPointGraus_Motor - grausMotor ;
 
-  // Serial.print("Posição do Motor (Counts): ");
-  // Serial.print(countMotor);
-  // Serial.print("Posição do Motor (rad): ");
-  // Serial.println(posicaoMotor);
-  // Serial.print("Velocidade Angular Motor (rad/s): ");
-  // Serial.println(velocidadeAngularMotor);
+  ErroLimiteEsquerdo = grausMotor - LimiteEsquerdo;
+  ErroLimiteDireito = LimiteDireito - grausMotor;
 }
 
 void acquisicaoPendulo() {
   long newCountsPendulo = EncoderPendulo.read();
-  unsigned long tempoAtual = millis();
+  double tempoAtual = millis();
 
   countsPenduloAcumulados -= CountsPendulo[0];
   PosicoesPenduloAcumuladas = PosicoesAngularPendulo[0];
@@ -240,82 +392,74 @@ void acquisicaoPendulo() {
   countsPenduloAcumulados += CountsPendulo[histMax - 1];
 
   countPendulo = countsPenduloAcumulados / (histMax-1);
-  long deltaPos = newCountsPendulo - CountsPendulo[histMax - 2];
+  float deltaPos = newCountsPendulo - CountsPendulo[histMax - 2];
 
-
-  unsigned long deltaTime = tempoAtual - ultimoTempoPendulo;
+  double deltaTime = tempoAtual - ultimoTempoPendulo;
 
   ultimoTempoPendulo = tempoAtual;
 
-  // Cálculo de velocidade linear e angular
-  grausPendulo = (countPendulo * 360.0) / 600.0; // Posição em graus
-  int posicaoAngularPendulo = grausPendulo * PI / 180.0; // Posição em radianos
+  grausPendulo = (countPendulo * 360.0) / 2800.0; // Position in degrees
+  double posicaoAngularPendulo = grausPendulo * PI / 180.0; // Position in radians
 
   PosicoesAngularPendulo[histMax - 1] = posicaoAngularPendulo;
   PosicoesPenduloAcumuladas += PosicoesAngularPendulo[histMax - 1];
+  
+  double deltaGraus = grausPendulo - grausPenduloAnt;
+  grausPenduloAnt = grausPendulo;
 
   posicaoPendulo = PosicoesPenduloAcumuladas / (histMax-1);
 
-  //dir = posicaoPendulo > 0 ? 1 : -1;
-
-  int velocidadeAngular = (deltaPos * 360.0 / 600.0) * (PI / 180.0) / (deltaTime / 1000.0); // Velocidade angular em rad/s
+  int velocidadeAngular = (deltaGraus) * ( PI / 180.0) / (deltaTime / 1000.0); // Angular velocity in rad/s
   velocidadesAngularPendulo[histMax - 1] = velocidadeAngular;
   velocidadeAngularPenduloAcumulada += velocidadesAngularPendulo[histMax - 1];
   velocidadeAngularPendulo = velocidadeAngularPenduloAcumulada / (histMax-1);
 
-
-  // Serial.print("Posição do Pendulo (Counts): ");
-  // Serial.print(countPendulo);
-  // Serial.print("Direção do Pendulo: ");
-  // Serial.println(dir);
-  // Serial.print("Posição do Pendulo (rad): ");
-  // Serial.println(posicaoPendulo);
-  // Serial.print("Velocidade Angular Pendulo (rad/s): ");
-  // Serial.println(velocidadeAngularPendulo);
+  ErroRadPendulo = setPointRad_Pendulo - posicaoPendulo;
+  ErroGrausPendulo = setPoint_Equilibrio_GrausPendulo - grausPendulo;
+  deltaErroGrausPendulo = ErroGrausPendulo - ErroAntGrausPendulo;
+  ErroAntGrausPendulo = ErroGrausPendulo;
 }
 
-void controlePendulo(int dir, int pwm) {
+void motorParado(){
+  digitalWrite(PWM1, LOW);
+  digitalWrite(PWM2, LOW);
+  analogWrite(ENABLE, 0);
+}
+void controlePendulo(double pwm, int mode) {
 
-  //Serial.print("PWM: ");
-  if (pwm<0){
-    pwm = -pwm;
+  pwm = abs(pwm);
+  pwm = map(pwm, 0, 100, 0, 255);
+
+  if(deltaErroGrausPendulo > 0 or (ErroLimiteDireito > 0 && (ErroLimiteEsquerdo < -90 && ErroLimiteEsquerdo < 0))){
+      dir = -1;
+    }
+  if(deltaErroGrausPendulo < 0 or (ErroLimiteEsquerdo > 0 && (ErroLimiteDireito < -90 && ErroLimiteDireito < 0))){
+    dir = 1;
   }
-  pwm = map(pwm, -100, 100, 0, 255);
-
-   if (posicaoMotor < -0.33 && posicaoPendulo < 0) {
-    digitalWrite(PWM1, HIGH);
-    digitalWrite(PWM2, LOW);
-    analogWrite(ENABLE, pwm);
-    //Serial.println("Motor A no sentido horário");
-  } else if (posicaoMotor > 0.60 && posicaoPendulo > 0) {
-    digitalWrite(PWM1, LOW);
-    digitalWrite(PWM2, HIGH);
-    analogWrite(ENABLE, pwm);
-    //Serial.println("Motor A no sentido anti-horário");
-  } else {
-    // Caso contrário, desliga o motor
-    digitalWrite(PWM1, LOW);
-    digitalWrite(PWM2, LOW);
-    analogWrite(ENABLE, 0);
-    //Serial.println("Motor A parado");
+  if(mode == 1){
+    if(dir == 1){
+      digitalWrite(PWM1, HIGH);
+      digitalWrite(PWM2, LOW);
+      analogWrite(ENABLE, pwm);
+    }
+    if(dir == -1){
+      digitalWrite(PWM1, LOW);
+      digitalWrite(PWM2, HIGH);
+      analogWrite(ENABLE, pwm);
+    }
   }
-
-  //Serial.println(pwm);
-  // if (dir > 0) {
-  //   digitalWrite(PWM1, LOW);
-  //   digitalWrite(PWM2, HIGH);
-  //   analogWrite(ENABLE, pwm);
-  //   Serial.println("Motor A no sentido horário");
-  // } else if (dir < 0){
-  //   digitalWrite(PWM1, HIGH);
-  //   digitalWrite(PWM2, LOW);
-  //   analogWrite(ENABLE, pwm);
-  //   Serial.println("Motor A no sentido anti-horário");
-  // }
-  // else{
-  //   digitalWrite(PWM1, LOW);
-  //   digitalWrite(PWM2, LOW);
-  //   analogWrite(ENABLE, 0);
-  //   Serial.println("Motor A parado");
-  // }
+  if(mode == 0){
+    if(dir == -1){
+      digitalWrite(PWM1, LOW);
+      digitalWrite(PWM2, HIGH);
+      analogWrite(ENABLE, pwm);
+      //Serial.println("Direita");
+    }
+    if(dir == 1){
+      digitalWrite(PWM1, HIGH);
+      digitalWrite(PWM2, LOW);
+      analogWrite(ENABLE, pwm);
+      //Serial.println("Esquerda");
+    }
+  }
 }
