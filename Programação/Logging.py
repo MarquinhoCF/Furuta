@@ -82,14 +82,14 @@ def read_and_process_data():
             print("Pendulum Positions:", pendulum_positions)
             print("Angular Velocities Pendulum:", angular_velocities_pendulum)
 
-    if(len(timestamps)):
-        print(f"Timestamp: {timestamps[-1]}, Pulsos do Motor: {motor_counts[-1]}, Posição em graus do Motor: {motor_degrees[-1]}, Posição em rad do Motor: {motor_positions[-1]}, Velocidade Angular do Motor: {angular_velocities_motor[-1]}, Pulsos do Pêndulo: {pendulum_counts[-1]}, Posição em graus do Pêndulo: {pendulum_degrees[-1]}, Posição em rad do Pêndulo: {pendulum_positions[-1]}, Velocidade Angular do Pêndulo: {angular_velocities_pendulum[-1]}")
+        if(len(timestamps)):
+            print(f"Timestamp: {timestamps[-1]}, Pulsos do Motor: {motor_counts[-1]}, Posição em graus do Motor: {motor_degrees[-1]}, Posição em rad do Motor: {motor_positions[-1]}, Velocidade Angular do Motor: {angular_velocities_motor[-1]}, Pulsos do Pêndulo: {pendulum_counts[-1]}, Posição em graus do Pêndulo: {pendulum_degrees[-1]}, Posição em rad do Pêndulo: {pendulum_positions[-1]}, Velocidade Angular do Pêndulo: {angular_velocities_pendulum[-1]}")
 
 
 
 def update_plot(frame):
-    if(start):
-        read_and_process_data()
+    
+    read_and_process_data()
     
     plt.cla()
 

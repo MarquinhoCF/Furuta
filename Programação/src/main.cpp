@@ -392,7 +392,7 @@ void acquisicaoPendulo() {
   countsPenduloAcumulados += CountsPendulo[histMax - 1];
 
   countPendulo = countsPenduloAcumulados / (histMax-1);
-  float deltaPos = newCountsPendulo - CountsPendulo[histMax - 2];
+  double deltaPos = newCountsPendulo - CountsPendulo[histMax - 2];
 
   double deltaTime = tempoAtual - ultimoTempoPendulo;
 
@@ -404,12 +404,11 @@ void acquisicaoPendulo() {
   PosicoesAngularPendulo[histMax - 1] = posicaoAngularPendulo;
   PosicoesPenduloAcumuladas += PosicoesAngularPendulo[histMax - 1];
   
-  double deltaGraus = grausPendulo - grausPenduloAnt;
   grausPenduloAnt = grausPendulo;
 
   posicaoPendulo = PosicoesPenduloAcumuladas / (histMax-1);
 
-  int velocidadeAngular = (deltaGraus) * ( PI / 180.0) / (deltaTime / 1000.0); // Angular velocity in rad/s
+  int velocidadeAngular = (deltaPos) * ( PI / 180.0) / (deltaTime / 1000.0); // Angular velocity in rad/s
   velocidadesAngularPendulo[histMax - 1] = velocidadeAngular;
   velocidadeAngularPenduloAcumulada += velocidadesAngularPendulo[histMax - 1];
   velocidadeAngularPendulo = velocidadeAngularPenduloAcumulada / (histMax-1);
@@ -430,10 +429,10 @@ void controlePendulo(double pwm, int mode) {
   pwm = abs(pwm);
   pwm = map(pwm, 0, 100, 0, 255);
 
-  if(deltaErroGrausPendulo > 0 or (ErroLimiteDireito > 0 && (ErroLimiteEsquerdo < -90 && ErroLimiteEsquerdo < 0))){
+  if(deltaErroGrausPendulo > 0 or (ErroLimiteDireito > 0 && (ErroLimiteEsquerdo < -70 && ErroLimiteEsquerdo < 0))){
       dir = -1;
     }
-  if(deltaErroGrausPendulo < 0 or (ErroLimiteEsquerdo > 0 && (ErroLimiteDireito < -90 && ErroLimiteDireito < 0))){
+  if(deltaErroGrausPendulo < 0 or (ErroLimiteEsquerdo > 0 && (ErroLimiteDireito < -70 && ErroLimiteDireito < 0))){
     dir = 1;
   }
   if(mode == 1){
