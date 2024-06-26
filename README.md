@@ -64,7 +64,7 @@ Em resumo, o objetivo do código de um pêndulo de Furuta é controlar o movimen
 
 ## Controle
 
-<img src="OtimizacaoControle.png" alt="Simulink da Otimização">
+<img src="OtimizacaoControle.jpg" alt="Simulink da Otimização">
 ## Eletrônica
 
 Segue lista de materiais ultilizados:
