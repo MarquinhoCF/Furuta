@@ -46,7 +46,7 @@ Em resumo, o objetivo do código de um pêndulo de Furuta é controlar o movimen
 
 - [@Rian Pinas](www.linkedin.com/in/rian-pinas)
 
--[@Guilherme Henrique Salvador](https://www.linkedin.com/in/ghsalvador)
+- [@Guilherme Henrique Salvador](https://www.linkedin.com/in/ghsalvador)
 
 - [@Matheus Duarte](https://www.linkedin.com/in/matheus-duarte-de-assis-0450b721b/)
 
@@ -54,7 +54,7 @@ Em resumo, o objetivo do código de um pêndulo de Furuta é controlar o movimen
 
 - [@Lucas](https://www.linkedin.com/in/lucas-leite-75267816b/)
 
--[@Nathan](https://www.linkedin.com/in/nathanhra/)
+- [@Nathan](https://www.linkedin.com/in/nathanhra/)
 
 - [@Matheus Bernades](https://www.linkedin.com/in/mateus-bernardes-alves-de-oliveira-a4b9a72a6/)
 
