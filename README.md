@@ -17,8 +17,11 @@ Controle
 Elétrica
 
 Para a execução do projeto elétrico, inicialmente, o grupo realizou um estudo geral a respeito dos conceitos de motores para relembrar e escolher qual tipo de motor seria mais vantajoso para a aplicação do projeto.
+
 Após a escolha de possíveis tipos de motores, foi necessário verificar a aplicação no projeto, calculando os valores de inércia esperados e dimensionando o projeto elétrico tanto do motor quanto do driver de potência para ser utilizado, de modo a manter o projeto eficaz e evitar o encarecimento do mesmo. Além disso, coube à divisão elétrica se responsabilizar pelos encoders utilizados no projeto, tanto para conhecimento da posição do motor da plataforma, quanto para a posição do pêndulo.
+
 Com os componentes elétricos definidos, foi realizado, primeiramente os testes inciais em protoboards para verificar se os componentes funcionavam do modo esperado, e obtendo os resultados pendentes, seguiu-se para a realização do tratamento dos dados obtidos pelos sensores para aquisição dos dados e recepção dos valores de PWM pelo motor.
+
 O projeto elétrico finalizou com a montagem e integração dos componentes elétricos com as bases mecânicas para que fosse completo o modelo físico do pêndulo e assim, ficasse pronto para os testes completos na plataforma do pêndulo de Furuta.
 
 Programação
