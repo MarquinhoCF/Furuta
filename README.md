@@ -5,16 +5,16 @@ Projeto da disciplina de Laboratório Integrador da turma 2024/1, no qual, foi r
 
 
 
-Mecânica
+Mecânica:
 
 Utilizamos o SolidWorks para modelar em 3D todo o projeto, o que nos permitiu desenhar todos os componentes necessários e ter uma visão abrangente das etapas envolvidas. Isso inclui desde a fabricação dos componentes que podemos produzir internamente até aqueles que precisaremos terceirizar. Além disso, conseguimos estimar com precisão o peso e as dimensões do projeto, aspectos cruciais para seu funcionamento adequado.
 
 Os principais elementos do projeto incluem uma haste de MDF de 6mm, um pêndulo de aço, mancais de alumínio aeronáutico, e uma estrutura de madeira fixada por dobradiças. Adicionalmente, dispomos de 2 encoders e um motor.
 
-Controle
+Controle:
+O objetivo do controle LQR (Linear Quadratic Regulator) em um pêndulo de Furuta é estabilizar o sistema físico, mantendo-o em uma posição desejada de forma estável e precisa. O controle LQR utiliza técnicas de controle ótimo para calcular a ação de controle necessária com base na medição da posição atual do pêndulo. Ele leva em consideração as características do sistema, como a dinâmica do pêndulo e as restrições físicas, para determinar a melhor estratégia de controle. O objetivo final é minimizar o erro de posição e manter o pêndulo equilibrado de maneira eficiente e robusta. O controle LQR é amplamente utilizado em sistemas de controle de movimento e robótica, proporcionando estabilidade e precisão no controle do pêndulo de Furuta.
 
-
-Elétrica
+Elétrica:
 
 Para a execução do projeto elétrico, inicialmente, o grupo realizou um estudo geral a respeito dos conceitos de motores para relembrar e escolher qual tipo de motor seria mais vantajoso para a aplicação do projeto.
 
@@ -24,7 +24,7 @@ Com os componentes elétricos definidos, foi realizado, primeiramente os testes 
 
 O projeto elétrico finalizou com a montagem e integração dos componentes elétricos com as bases mecânicas para que fosse completo o modelo físico do pêndulo e assim, ficasse pronto para os testes completos na plataforma do pêndulo de Furuta.
 
-Programação
+Programação:
 
 O código de um pêndulo de Furuta tem como objetivo controlar o movimento de um sistema físico conhecido como pêndulo invertido de Furuta. Esse sistema consiste em um pêndulo que pode girar livremente em torno de um eixo vertical, enquanto outro eixo horizontal é utilizado para controlar a posição do pêndulo.
 
