@@ -2,10 +2,7 @@ from matplotlib import animation
 import serial
 import csv
 import tkinter as tk
-import re
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg 
-from matplotlib.figure import Figure
-import threading 
 import time
 import matplotlib.pyplot as plt
 # Open the serial port
@@ -13,6 +10,16 @@ import serial.tools.list_ports
 
 # Get the list of available COM ports
 arduino_ports = [p.device for p in serial.tools.list_ports.comports()] #if 'Arduino' in p.description]
+
+print(arduino_ports)
+# Check if any Arduino devices are found
+if arduino_ports:
+    # Open the serial port
+    ser = serial.Serial(arduino_ports[0], 9600)
+    print("Arduino connected on", arduino_ports[0])
+else:
+    print("Arduino not found. Please check the connection.")
+    time.sleep(1)
 
 
 # Create lists to store the data
@@ -25,6 +32,9 @@ pendulum_counts = [0]
 pendulum_positions = [0]
 pendulum_degrees = [0]
 angular_velocities_pendulum = [0]
+pwm = [0]
+volts = [0]
+
 start = False
 print_serial_values = False
 
@@ -36,60 +46,33 @@ show_pendulum_counts = True
 show_pendulum_positions = True
 show_pendulum_degrees = True
 show_pendulum_angular_velocities = True
-
+show_pwm = True
+show_volts = True
 
 # Read data from the serial port
 def read_and_process_data():
-    if (start):
-        # Read a line of data
-        try:
-            line = ser.readline().decode('utf-8', errors="strict").strip()
-            # Split the line into values
-            values = line.split(', ')
-        except:
-            ser.reset_input_buffer()
-            
-            
-        # Check if the line has the correct number of values
-        # Append the values to the lists
-        try:
-            if len(values) == 9:
-                timestamps.append(float(values[0]))
-                motor_counts.append(float(values[1]))
-                motor_degrees.append(float(values[2]))
-                motor_positions.append(float(values[3]))
-                angular_velocities_motor.append(float(values[4]))
-                pendulum_counts.append(float(values[5]))
-                pendulum_degrees.append(float(values[6]))
-                pendulum_positions.append(float(values[7]))
-                angular_velocities_pendulum.append(float(values[8]))
-        except:
-            ser.reset_input_buffer()
-            return
+    # Read a line of data
+    if(start):
+        line = ser.readline().decode('utf-8', errors="strict").strip()
+        # Split the line into values
+        values = line.split(', ')   
 
-        if (print_serial_values):
-            print("Invalid data:", values)
-            print("Data length:", len(values))
-            print("Data:", values)
-            print("Line:", line)
-            print("Timestamps:", timestamps)
-            print("Motor Counts:", motor_counts)
-            print("Motor Degrees:", motor_degrees)
-            print("Motor Positions:", motor_positions)
-            print("Angular Velocities Motor:", angular_velocities_motor)
-            print("Pendulum Counts:", pendulum_counts)
-            print("Pendulum Degrees:", pendulum_degrees)
-            print("Pendulum Positions:", pendulum_positions)
-            print("Angular Velocities Pendulum:", angular_velocities_pendulum)
-
-        if(len(timestamps)):
-            print(f"Timestamp: {timestamps[-1]}, Pulsos do Motor: {motor_counts[-1]}, Posição em graus do Motor: {motor_degrees[-1]}, Posição em rad do Motor: {motor_positions[-1]}, Velocidade Angular do Motor: {angular_velocities_motor[-1]}, Pulsos do Pêndulo: {pendulum_counts[-1]}, Posição em graus do Pêndulo: {pendulum_degrees[-1]}, Posição em rad do Pêndulo: {pendulum_positions[-1]}, Velocidade Angular do Pêndulo: {angular_velocities_pendulum[-1]}")
+    timestamps.append(float(values[0]))
+    motor_counts.append(float(values[1]))
+    motor_degrees.append(float(values[2]))
+    motor_positions.append(float(values[3]))
+    angular_velocities_motor.append(float(values[4]))
+    pendulum_counts.append(float(values[5]))
+    pendulum_degrees.append(float(values[6]))
+    pendulum_positions.append(float(values[7]))
+    angular_velocities_pendulum.append(float(values[8]))
+    pwm.append(float(values[9]))
+    volts.append(float(values[10]))
 
 
-
-def update_plot(frame):
-    
-    read_and_process_data()
+def update_plot(_):
+    if(start):
+        read_and_process_data()
     
     plt.cla()
 
@@ -127,15 +110,20 @@ def update_plot(frame):
         plt.plot(timestamps, angular_velocities_pendulum, label='Velocidade Angular do Pêndulo [rad/s]')
     if show_pendulum_angular_velocities == False:
         plt.plot([], [], label='Velocidade Angular do Pêndulo [rad/s]')
+
+    if show_pwm and start:
+        plt.plot(timestamps, pwm, label='PWM')
+    if show_pwm == False:
+        plt.plot([], [], label='PWM')
+
+    if show_volts and start:
+        plt.plot(timestamps, volts, label='Tensao')
+    if show_volts == False:
+        plt.plot([], [], label='Tensao')
     
     ax.grid(True)
     plt.xlabel('Tempo (s)')
     plt.ylabel('Valor')
-    plt.legend()
-
-
-# Create the user interface
-root = tk.Tk()
 
 # Function to toggle the value of show_motor_positions
 def toggle_show_motor_counts():
@@ -177,6 +165,11 @@ def toggle_show_pendulum_angular_velocities():
     global show_pendulum_angular_velocities
     show_pendulum_angular_velocities = not show_pendulum_angular_velocities
 
+# Function to toggle the value of show_pwm
+def toggle_show_pwm():
+    global show_pwm
+    show_pwm = not show_pwm
+
 # Function to perform the swing-up action
 def swing_up():
     # Implement the swing-up logic here
@@ -184,6 +177,10 @@ def swing_up():
 
 def Equilibrar():
     ser.write(b'Equilibrar\n')
+
+
+root = tk.Tk()
+root.title("Data Logger")
 
 #Create the Equilibrar button
 equilibrar_button = tk.Button(root, text="Equilibrar", command=Equilibrar)
@@ -231,15 +228,22 @@ def reset_data():
     pendulum_degrees.clear()
     pendulum_counts.clear()
     angular_velocities_pendulum.clear()
+    pwm.clear()
+    volts.clear()
 
 
 # Function to write the data as CSV
 def write_data_as_csv():
+    global pwm
+    global volts
+    pwm = [0 if x == 0 else x for x in pwm]
+    volts = [0 if x == 0 else x for x in volts]
+
     with open('data.csv', 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(['Tempo', 'Pulsos Encoder Motor', 'Posição Angular do Motor [graus]', 'Posição Angular do Motor [rad]', 'Velocidade Angular do Motor [rad/s]', 'Pulsos Encoder Pêndulo', 'Posição Angular Pêndulo em [graus]', 'Posição Angular Pêndulo [rad]', 'Velocidade Angular do Pêndulo [rad/s]'])
-        for timestamp, motor_count, motor_degree, motor_position, angular_velocity_motor, pendulum_count, pendulum_degree, pendulum_position, angular_velocity_pendulum in zip(timestamps, motor_counts, motor_degrees, motor_positions, angular_velocities_motor, pendulum_counts, pendulum_degrees, pendulum_positions, angular_velocities_pendulum):
-            writer.writerow([timestamp, motor_count, motor_degree, motor_position, angular_velocity_motor, pendulum_count, pendulum_degree, pendulum_position, angular_velocity_pendulum])
+        writer.writerow(['Tempo', 'Pulsos Encoder Motor', 'Posição Angular do Motor [graus]', 'Posição Angular do Motor [rad]', 'Velocidade Angular do Motor [rad/s]', 'Pulsos Encoder Pêndulo', 'Posição Angular Pêndulo em [graus]', 'Posição Angular Pêndulo [rad]', 'Velocidade Angular do Pêndulo [rad/s]', 'PWM', 'Tensao'])
+        for timestamp, motor_count, motor_degree, motor_position, angular_velocity_motor, pendulum_count, pendulum_degree, pendulum_position, angular_velocity_pendulum, pwm, volts  in zip(timestamps, motor_counts, motor_degrees, motor_positions, angular_velocities_motor, pendulum_counts, pendulum_degrees, pendulum_positions, angular_velocities_pendulum, pwm, volts):
+            writer.writerow([timestamp, motor_count, motor_degree, motor_position, angular_velocity_motor, pendulum_count, pendulum_degree, pendulum_position, angular_velocity_pendulum, pwm, volts])
     
 
 # Function to close the window
@@ -248,22 +252,26 @@ def close_window():
 
 # Create the toggle buttons
 # Create the toggle buttons
-toggle_motor_counts_button = tk.Button(root, text= "Esconder/Mostrar Pulsos Encoder Motor" , command=toggle_show_motor_counts)
-toggle_motor_counts_button.pack(side=tk.TOP)
-toggle_motor_positions_button = tk.Button(root, text="Esconder/Mostrar Posições em [rad] do Motor", command=toggle_show_motor_positions)
-toggle_motor_positions_button.pack(side=tk.TOP)
-toggle_motor_angular_velocities_button = tk.Button(root, text="Esconder/Mostrar Velocidade Angular do Motor [rad/s]", command=toggle_show_motor_angular_velocities)
-toggle_motor_angular_velocities_button.pack(side=tk.TOP)
-toggle_motor_degrees_button = tk.Button(root, text="Esconder/Mostrar Posições em [graus] do Motor", command=toggle_show_motor_degrees)
-toggle_motor_degrees_button.pack(side=tk.TOP)
-toggle_pendulum_counts_button = tk.Button(root, text="Esconder/Mostrar Pulsos do Pêndulo", command=toggle_show_pendulum_counts)
-toggle_pendulum_counts_button.pack(side=tk.TOP)
-toggle_pendulum_degrees_button = tk.Button(root, text="Esconder/Mostrar Posições em [graus] do Pendulo ", command=toggle_show_pendulum_degrees)
-toggle_pendulum_degrees_button.pack(side=tk.TOP)
-toggle_pendulum_positions_button = tk.Button(root, text="Esconder/Mostrar Posições em [rad] do Pendulo", command=toggle_show_pendulum_positions)
-toggle_pendulum_positions_button.pack(side=tk.TOP)
-toggle_pendulum_angular_velocities_button = tk.Button(root, text="Esconder/Mostrar Velocidade Angular do Pêndulo [rad/s]", command=toggle_show_pendulum_angular_velocities)
-toggle_pendulum_angular_velocities_button.pack(side=tk.TOP)
+# toggle_motor_counts_button = tk.Button(root, text= "Esconder/Mostrar Pulsos Encoder Motor" , command=toggle_show_motor_counts)
+# toggle_motor_counts_button.pack(side=tk.TOP)
+# toggle_motor_positions_button = tk.Button(root, text="Esconder/Mostrar Posições em [rad] do Motor", command=toggle_show_motor_positions)
+# toggle_motor_positions_button.pack(side=tk.TOP)
+# toggle_motor_angular_velocities_button = tk.Button(root, text="Esconder/Mostrar Velocidade Angular do Motor [rad/s]", command=toggle_show_motor_angular_velocities)
+# toggle_motor_angular_velocities_button.pack(side=tk.TOP)
+# toggle_motor_degrees_button = tk.Button(root, text="Esconder/Mostrar Posições em [graus] do Motor", command=toggle_show_motor_degrees)
+# toggle_motor_degrees_button.pack(side=tk.TOP)
+# toggle_pendulum_counts_button = tk.Button(root, text="Esconder/Mostrar Pulsos do Pêndulo", command=toggle_show_pendulum_counts)
+# toggle_pendulum_counts_button.pack(side=tk.TOP)
+# toggle_pendulum_degrees_button = tk.Button(root, text="Esconder/Mostrar Posições em [graus] do Pendulo ", command=toggle_show_pendulum_degrees)
+# toggle_pendulum_degrees_button.pack(side=tk.TOP)
+# toggle_pendulum_positions_button = tk.Button(root, text="Esconder/Mostrar Posições em [rad] do Pendulo", command=toggle_show_pendulum_positions)
+# toggle_pendulum_positions_button.pack(side=tk.TOP)
+# toggle_pendulum_angular_velocities_button = tk.Button(root, text="Esconder/Mostrar Velocidade Angular do Pêndulo [rad/s]", command=toggle_show_pendulum_angular_velocities)
+# toggle_pendulum_angular_velocities_button.pack(side=tk.TOP)
+# toggle_pwm_button = tk.Button(root, text="Esconder/Mostrar PWM", command=toggle_show_pwm)
+# toggle_pwm_button.pack(side=tk.TOP)
+# toggle_volts_button = tk.Button(root, text="Esconder/Mostrar Tensão", command=toggle_show_volts)
+# toggle_volts_button.pack(side=tk.TOP)
 
 #Create the reset button
 reset_button = tk.Button(root, text="Reset", command=reset_data)
@@ -291,24 +299,9 @@ canvas = FigureCanvasTkAgg(fig, master=root)
 canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
 # Create the animation
-ani = animation.FuncAnimation(fig, update_plot, interval=0.01, blit=False)
+
+ani = animation.FuncAnimation(fig, update_plot, frames=len(timestamps), interval=1, cache_frame_data=True)
 
 
-def main():
-    while(True):
-        print(arduino_ports)
-        # Check if any Arduino devices are found
-        if arduino_ports:
-            # Open the serial port
-            global ser
-            ser = serial.Serial(arduino_ports[0], 112500)
-            print("Arduino connected on", arduino_ports[0])
-            break
-        else:
-            print("Arduino not found. Please check the connection.")
-    
-    # Start the main loop
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
+# Start the main loop
+root.mainloop()
