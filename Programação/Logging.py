@@ -178,6 +178,8 @@ def swing_up():
 def Equilibrar():
     ser.write(b'Equilibrar\n')
 
+def Acquisitar():
+    ser.write(b'Acquisitar\n')
 
 root = tk.Tk()
 root.title("Data Logger")
@@ -186,6 +188,9 @@ root.title("Data Logger")
 equilibrar_button = tk.Button(root, text="Equilibrar", command=Equilibrar)
 equilibrar_button.pack(side=tk.BOTTOM)
 
+#Create the Acquisiton button
+acquisition_button = tk.Button(root, text="Acquisitar", command=Acquisitar)
+acquisition_button.pack(side=tk.BOTTOM)
 
 # Create the SwingUp button
 swing_up_button = tk.Button(root, text="SwingUp", command=swing_up)
