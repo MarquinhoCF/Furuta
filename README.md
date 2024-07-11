@@ -12,6 +12,7 @@ Utilizamos o SolidWorks para modelar em 3D todo o projeto, o que nos permitiu de
 Os principais elementos do projeto incluem uma haste de MDF de 6mm, um pêndulo de aço, mancais de alumínio aeronáutico, e uma estrutura de madeira fixada por dobradiças. Adicionalmente, dispomos de 2 encoders e um motor.
 
 Controle:
+
 O objetivo do controle LQR (Linear Quadratic Regulator) em um pêndulo de Furuta é estabilizar o sistema físico, mantendo-o em uma posição desejada de forma estável e precisa. O controle LQR utiliza técnicas de controle ótimo para calcular a ação de controle necessária com base na medição da posição atual do pêndulo. Ele leva em consideração as características do sistema, como a dinâmica do pêndulo e as restrições físicas, para determinar a melhor estratégia de controle. O objetivo final é minimizar o erro de posição e manter o pêndulo equilibrado de maneira eficiente e robusta. O controle LQR é amplamente utilizado em sistemas de controle de movimento e robótica, proporcionando estabilidade e precisão no controle do pêndulo de Furuta.
 
 Elétrica:
@@ -68,8 +69,11 @@ Em resumo, o objetivo do código de um pêndulo de Furuta é controlar o movimen
 
 ## Controle
 
-<img src="OtimizacaoControle.jpg" alt="Simulink da Otimização">
-<img src="LQR.jpeg" alt="Simulink LQR">
+<img src="Diagrama_de_blocos_controle_continuo.png" alt="Diagrama de blocos controle LQR contínuo">
+<img src="Resposta_sistema_continuo.png" alt="Resposta do sistema de controle LQR contínuo">
+
+<img src="Diagrama_de_blocos_controle_discreto.png" alt="Diagrama de blocos controle LQR discreto">
+<img src="Resposta_sistema_discreto.png" alt="Resposta do sistema de controle LQR discreto">
 
 
 ## Eletrica
